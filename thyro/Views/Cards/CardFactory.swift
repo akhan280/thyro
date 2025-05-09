@@ -18,6 +18,8 @@ struct CardFactory {
             HeartRateLogCard()
         case .labDueReminder:
             LabDueReminderCard()
+        case .foodLookup:
+            FoodLookupCard()
         }
     }
 } 

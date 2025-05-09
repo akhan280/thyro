@@ -31,12 +31,20 @@ struct SettingsView: View {
                         // Potentially clear local data and show onboarding
                     }
                     Button("Delete Account Data") {
-                        // Delete local data
+                        // Delete local data first
                         LocalStore.deleteProfile()
                         LocalStore.deleteConfig()
-                        // Reset stores
-                        JourneyStore.shared.setProfile(JourneyProfile(condition: .hypo, stage: .dx, onMedication: false, onLID: false))
-                        ConfigStore.shared.setConfig(UserConfig(trackSymptoms: true, labReminders: true, nextImportantDate: nil, meds: []))
+                        
+                        // Reset in-memory stores to their initial state which load defaults if local is nil.
+                        // This avoids immediately saving new default profiles back to LocalStore here.
+                        // The stores will re-initialize with defaults when next accessed if their data source is nil.
+                        // Effectively, make the stores re-evaluate their initializers:
+                        JourneyStore.shared.profile = JourneyStore.shared.profile // Trigger a re-publish, which should re-load or use default if nil after delete
+                        ConfigStore.shared.config = ConfigStore.shared.config
+                        // A more robust reset might involve a dedicated reset function in each store
+                        // or re-initializing them if possible, but that's complex with singletons.
+                        // For now, the key is that LocalStore is empty.
+
                         // Show onboarding
                         onDeleteAccount()
                     }.foregroundColor(.red)

@@ -2,7 +2,8 @@ import Foundation
 
 enum CardType: String, Codable, CaseIterable {
     case symptomLog, medicationReminder, lidCountdown,
-         raiPrecautions, tgTrend, heartRateLog, labDueReminder
+         raiPrecautions, tgTrend, heartRateLog, labDueReminder,
+         foodLookup
 }
 
 struct CardDescriptor: Identifiable, Codable {

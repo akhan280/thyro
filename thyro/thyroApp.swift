@@ -34,10 +34,15 @@ struct ThyroApp: App {
                         hasStartedOnboardingFlow = true
                     })
                 } else {
-                    OnboardingCoordinator(onFinishOnboarding: {
-                        showingOnboarding = false          // Onboarding is fully complete
-                        hasStartedOnboardingFlow = false   // Reset for next time (e.g., after account deletion)
-                    })
+                    OnboardingCoordinator(
+                        onBackToWelcome: { // New closure to handle back from the first step of onboarding
+                            hasStartedOnboardingFlow = false
+                        },
+                        onFinishOnboarding: {
+                            showingOnboarding = false          // Onboarding is fully complete
+                            hasStartedOnboardingFlow = false   // Reset for next time (e.g., after account deletion)
+                        }
+                    )
                     .environmentObject(journeyStore)
                     .environmentObject(configStore)
                 }

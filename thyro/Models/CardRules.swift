@@ -9,6 +9,7 @@ import Foundation
 // TgTrend                profile.condition == .cancer && profile.stage == .surveillance  (Note: original rule was profile.stage >= .surveillance, interpreting as == .surveillance for simplicity, adjust if needed)
 // HeartRateLog           profile.condition == .hyper
 // LabDueReminder         config.labReminders == true && profile.stage != .raiIsolation
+// FoodLookup             profile.stage == .raiPrep || profile.stage == .raiIsolation
 
 func enabledCards(for profile: JourneyProfile, config: UserConfig) -> [CardType] {
     return CardType.allCases.filter { cardType in
@@ -20,7 +21,7 @@ func enabledCards(for profile: JourneyProfile, config: UserConfig) -> [CardType]
         case .lidCountdown:
             return profile.stage == .raiPrep
         case .raiPrecautions:
-            return profile.stage == .raiIsolation
+            return profile.stage == .raiIsolation || profile.stage == .raiPrep
         case .tgTrend:
             // Assuming .surveillance is the stage where TgTrend is relevant.
             // If other later stages also need it, the logic for Stage comparison might need adjustment.
@@ -29,6 +30,8 @@ func enabledCards(for profile: JourneyProfile, config: UserConfig) -> [CardType]
             return profile.condition == .hyper
         case .labDueReminder:
             return config.labReminders && profile.stage != .raiIsolation
+        case .foodLookup:
+            return profile.stage == .raiPrep || profile.stage == .raiIsolation
         }
     }
 } 

@@ -59,53 +59,172 @@ struct PersonalizationView: View {
     @Binding var onMedication: Bool
     @Binding var trackSymptoms: Bool
     @Binding var labReminders: Bool
-    @Binding var nextImportantDate: Date?
-    @Binding var medications: [Medication]
     
     var onFinish: () -> Void
+    var onBack: () -> Void
 
-    @State private var showDatePicker = false
+    private let backgroundColor = Color(red: 248/255, green: 248/255, blue: 247/255)
+    private let buttonBackgroundColor = Color.white
+    private let selectedButtonBackgroundColor = Color.purple.opacity(0.1)
+    private let selectedBorderColor = Color.purple
+    private let unselectedBorderColor = Color.gray.opacity(0.2)
+    private let textColor = Color.black.opacity(0.8)
+    private let questionTextColor = Color.black.opacity(0.7)
 
     var body: some View {
-        Form {
-            Section(header: Text("Personalize Your Experience")) {
-                Toggle("Are you currently on thyroid medication?", isOn: $onMedication)
-                Toggle("Track Symptoms?", isOn: $trackSymptoms)
-                Toggle("Enable Lab Reminders?", isOn: $labReminders)
-                
+        ZStack {
+            backgroundColor.edgesIgnoringSafeArea(.all)
+
+            VStack(spacing: 0) {
+                // Header with Back Button and Step Icons
                 HStack {
-                    Text("Next Important Date (Optional)")
-                    Spacer()
-                    if let date = nextImportantDate {
-                        Text(date, style: .date)
-                            .onTapGesture { showDatePicker = true }
-                    } else {
-                        Button("Set Date") { showDatePicker = true }
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3.weight(.medium))
+                            .foregroundColor(textColor)
                     }
+                    .padding(.leading, 20)
+
+                    Spacer()
+                    
+                    HStack(spacing: 12) {
+                        OnboardingStepIcon(systemName: "heart.text.square", isSelected: false)
+                        OnboardingStepIcon(systemName: "clock", isSelected: false)
+                        OnboardingStepIcon(systemName: "pills", isSelected: true) // Third icon selected
+                    }
+                    
+                    Spacer()
+                    Image(systemName: "chevron.left").opacity(0).padding(.trailing, 20)
                 }
-                if showDatePicker {
-                    DatePicker(
-                        "Select Date",
-                        selection: Binding<Date>(
-                            get: { nextImportantDate ?? Date() },
-                            set: { nextImportantDate = $0 }
-                        ),
-                        displayedComponents: .date
+                .padding(.top, 20)
+                .padding(.bottom, 30)
+
+                Text("Let's tune your experience")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(textColor)
+                    .padding(.bottom, 40)
+
+                // Questions
+                VStack(alignment: .leading, spacing: 30) {
+                    PersonalizationQuestionView(
+                        question: "Are you currently taking any thyroid-related medications?",
+                        selection: $onMedication,
+                        textColor: questionTextColor,
+                        buttonBackgroundColor: buttonBackgroundColor,
+                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                        selectedBorderColor: selectedBorderColor,
+                        unselectedBorderColor: unselectedBorderColor
                     )
-                    .datePickerStyle(GraphicalDatePickerStyle())
-                    .frame(maxHeight: 400)
-                    Button("Done selecting date") { showDatePicker = false }
+                    
+                    PersonalizationQuestionView(
+                        question: "Do you want to track your daily symptoms?",
+                        selection: $trackSymptoms,
+                        textColor: questionTextColor,
+                        buttonBackgroundColor: buttonBackgroundColor,
+                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                        selectedBorderColor: selectedBorderColor,
+                        unselectedBorderColor: unselectedBorderColor
+                    )
+                    
+                    PersonalizationQuestionView(
+                        question: "Would you like reminders for lab tests or doctor visits?",
+                        selection: $labReminders,
+                        textColor: questionTextColor,
+                        buttonBackgroundColor: buttonBackgroundColor,
+                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                        selectedBorderColor: selectedBorderColor,
+                        unselectedBorderColor: unselectedBorderColor
+                    )
                 }
+                .padding(.horizontal, 20)
+
+                Spacer()
+                
+                // Finish Button (replaces "Next")
+                Button(action: onFinish) {
+                    Text("Next") // Image shows "Next", but this is the finish step
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.purple.opacity(0.7), Color.blue.opacity(0.7)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(25)
+                        // No disabled state for this button in the design, it's always active
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 10)
+
+                Text("Your data is stored locally")
+                    .font(.caption)
+                    .foregroundColor(textColor.opacity(0.6))
+                    .padding(.bottom, 20)
             }
-            
-            MinimalMedicationEditorView(meds: $medications)
-            
-            Button("Finish Onboarding") {
-                onFinish()
-            }
-            .buttonStyle(.borderedProminent)
         }
-        .navigationTitle("Personalization")
+        .navigationBarHidden(true)
+    }
+}
+
+struct PersonalizationQuestionView: View {
+    let question: String
+    @Binding var selection: Bool
+    
+    let textColor: Color
+    let buttonBackgroundColor: Color
+    let selectedButtonBackgroundColor: Color
+    let selectedBorderColor: Color
+    let unselectedBorderColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text(question)
+                .font(.headline)
+                .foregroundColor(textColor)
+            
+            HStack(spacing: 15) {
+                YesNoButton(title: "Yes", isSelected: selection == true, action: { selection = true },
+                            backgroundColor: buttonBackgroundColor, selectedBackgroundColor: selectedButtonBackgroundColor,
+                            selectedBorderColor: selectedBorderColor, unselectedBorderColor: unselectedBorderColor, textColor: textColor)
+                YesNoButton(title: "No", isSelected: selection == false, action: { selection = false },
+                            backgroundColor: buttonBackgroundColor, selectedBackgroundColor: selectedButtonBackgroundColor,
+                            selectedBorderColor: selectedBorderColor, unselectedBorderColor: unselectedBorderColor, textColor: textColor)
+            }
+        }
+    }
+}
+
+struct YesNoButton: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    let backgroundColor: Color
+    let selectedBackgroundColor: Color
+    let selectedBorderColor: Color
+    let unselectedBorderColor: Color
+    let textColor: Color
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline)
+                .fontWeight(isSelected ? .bold : .regular)
+                .foregroundColor(textColor)
+                .padding()
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(isSelected ? selectedBackgroundColor : backgroundColor)
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(isSelected ? selectedBorderColor : unselectedBorderColor, lineWidth: isSelected ? 2 : 1)
+                )
+        }
     }
 }
 
@@ -114,19 +233,15 @@ struct PersonalizationView: View {
         @State var onMed: Bool = false
         @State var trackSym: Bool = true
         @State var labRem: Bool = true
-        @State var nextDate: Date? = nil
-        @State var meds: [Medication] = []
+        
         var body: some View {
-            NavigationView {
-                PersonalizationView(
-                    onMedication: $onMed,
-                    trackSymptoms: $trackSym,
-                    labReminders: $labRem,
-                    nextImportantDate: $nextDate,
-                    medications: $meds,
-                    onFinish: { print("Finish Tapped") }
-                )
-            }
+            PersonalizationView(
+                onMedication: $onMed,
+                trackSymptoms: $trackSym,
+                labReminders: $labRem,
+                onFinish: { print("Finish Tapped") },
+                onBack: { print("Back Tapped from Personalization") }
+            )
         }
     }
     return PreviewWrapper()
