@@ -60,7 +60,6 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func destinationView(for cardType: CardType) -> some View {
-        // This will switch to the appropriate detail view for each card type
         switch cardType {
         case .symptomLog:
             SymptomLogDetailView()
@@ -74,19 +73,29 @@ struct DashboardView: View {
             TgTrendDetailView()
         case .heartRateLog:
             HeartRateLogDetailView()
-        case .labDueReminder:
-            LabDueReminderDetailView()
-        case .foodLookup:
-            FoodLookupDetailView()
-        // Add default or error view if necessary, though all CardType cases should be handled
-        // default:
-        //     Text("Detail view not implemented for \(cardType.rawValue)")
+        case .appointments:
+            AppointmentsDetailView()
         }
     }
 }
 
 #Preview {
-    DashboardView()
-        .environmentObject(ConfigStore.shared)
-        .environmentObject(JourneyStore.shared)
+    // For DashboardView preview, ensure all necessary stores are provided, especially if cards use them.
+    let configStore = ConfigStore.shared
+    let journeyStore = JourneyStore.shared
+    let appointmentStore = AppointmentStore.shared // Added for AppointmentsCard
+    let symptomStore = SymptomStore.shared     // Added for SymptomLogCard if its preview implies it
+    let previewUserID = UUID()
+
+    // Setup a basic profile and config for the preview to make sense
+    journeyStore.profile = JourneyProfile(user_id: previewUserID, condition: .hypo, stage: .surveillance, onMedication: true, onLID: false)
+    configStore.config = UserConfig(user_id: previewUserID, logSymptoms: true, trackAppointments: true, manageMedications: true)
+    // You might want to add a sample appointment for the AppointmentsCard preview
+    // appointmentStore.addAppointment(Appointment(title: "Preview Appointment", date: Date()))
+
+    return DashboardView()
+        .environmentObject(configStore)
+        .environmentObject(journeyStore)
+        .environmentObject(appointmentStore) // Inject AppointmentStore
+        .environmentObject(symptomStore)     // Inject SymptomStore
 } 

@@ -16,10 +16,8 @@ struct CardFactory {
             TgTrendCard()
         case .heartRateLog:
             HeartRateLogCard()
-        case .labDueReminder:
-            LabDueReminderCard()
-        case .foodLookup:
-            FoodLookupCard()
+        case .appointments:
+            AppointmentsCard()
         }
     }
 } 

@@ -9,45 +9,78 @@ struct SettingsView: View {
     // @State private var trackSymptoms: Bool = ConfigStore.shared.config.trackSymptoms
 
     var onDeleteAccount: () -> Void
+    
+    @EnvironmentObject var configStore: ConfigStore
+    @EnvironmentObject var journeyStore: JourneyStore // For onMedication status
+    
+    // Create local bindings to the config properties for the Toggles
+    // These will read the initial value and then use configStore.setConfig to update.
+    // This approach is needed because UserConfig itself is optional in ConfigStore.
+
+    private func binding<Value>(for keyPath: WritableKeyPath<UserConfig, Value>, defaultValue: Value) -> Binding<Value> {
+        Binding<Value>(
+            get: { configStore.config?[keyPath: keyPath] ?? defaultValue },
+            set: { newValue in
+                if var currentConfig = configStore.config {
+                    currentConfig[keyPath: keyPath] = newValue
+                    configStore.setConfig(currentConfig)
+                }
+            }
+        )
+    }
+    
+    // Specific binding for manageMedications to handle onMedication dependency
+    private var manageMedicationsBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { (journeyStore.profile?.onMedication ?? false) && (configStore.config?.manageMedications ?? true) },
+            set: { newValue in
+                if var currentConfig = configStore.config, journeyStore.profile?.onMedication == true {
+                    currentConfig.manageMedications = newValue
+                    configStore.setConfig(currentConfig)
+                }
+            }
+        )
+    }
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Preferences")) {
-                    Text("Settings content placeholder.")
-                    // Example Toggle:
-                    // Toggle("Track Symptoms", isOn: $trackSymptoms)
-                    //     .onChange(of: trackSymptoms) {
-                    //         var currentConfig = ConfigStore.shared.config
-                    //         currentConfig.trackSymptoms = trackSymptoms
-                    //         ConfigStore.shared.setConfig(currentConfig) // This will trigger save and sync
-                    //     }
+                if configStore.config != nil {
+                    Section(header: Text("Feature Preferences")) {
+                        Toggle("Enable Symptom Logging", isOn: binding(for: \.logSymptoms, defaultValue: true))
+                        Toggle("Enable Appointment Tracking", isOn: binding(for: \.trackAppointments, defaultValue: true))
+                        
+                        if journeyStore.profile?.onMedication == true {
+                            Toggle("Enable Medication Management", isOn: manageMedicationsBinding)
+                        } else {
+                            HStack {
+                                Text("Medication Management")
+                                    .foregroundColor(.gray) // Indicate disabled state
+                                Spacer()
+                                Text("N/A (Not on medication)")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                } else {
+                    Text("User configuration not loaded yet.")
+                        .foregroundColor(.secondary)
                 }
                 
+                Section(header: Text("Data Management")) {
+                    Button("Clear All Symptom Logs (Debug)", role: .destructive) {
+                        SymptomStore.shared.clearAllHistory()
+                        // Optionally, add an alert to confirm
+                    }
+                }
+
                 Section(header: Text("Account")) {
                     Button("Sign Out (Placeholder)") {
                         print("Sign out tapped - not implemented")
-                        // SupabaseService.shared.signOut()
-                        // Potentially clear local data and show onboarding
+                        // Would call SupabaseService.shared.signOut() and then trigger app state change
                     }
-                    Button("Delete Account Data") {
-                        // Delete local data first
-                        LocalStore.deleteProfile()
-                        LocalStore.deleteConfig()
-                        
-                        // Reset in-memory stores to their initial state which load defaults if local is nil.
-                        // This avoids immediately saving new default profiles back to LocalStore here.
-                        // The stores will re-initialize with defaults when next accessed if their data source is nil.
-                        // Effectively, make the stores re-evaluate their initializers:
-                        JourneyStore.shared.profile = JourneyStore.shared.profile // Trigger a re-publish, which should re-load or use default if nil after delete
-                        ConfigStore.shared.config = ConfigStore.shared.config
-                        // A more robust reset might involve a dedicated reset function in each store
-                        // or re-initializing them if possible, but that's complex with singletons.
-                        // For now, the key is that LocalStore is empty.
-
-                        // Show onboarding
-                        onDeleteAccount()
-                    }.foregroundColor(.red)
+                    Button("Delete Account Data", role: .destructive, action: onDeleteAccount)
                 }
             }
             .navigationTitle("Settings")
@@ -56,7 +89,13 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(onDeleteAccount: {})
-        .environmentObject(ConfigStore.shared)
-        .environmentObject(JourneyStore.shared)
+    let configStore = ConfigStore.shared
+    let journeyStore = JourneyStore.shared
+    let previewUserID = UUID()
+    configStore.config = UserConfig(user_id: previewUserID, logSymptoms: true, trackAppointments: true, manageMedications: true)
+    journeyStore.profile = JourneyProfile(user_id: previewUserID, condition: .hypo, stage: .dx, onMedication: true, onLID: false)
+
+    return SettingsView(onDeleteAccount: { print("Delete account tapped in preview") })
+        .environmentObject(configStore)
+        .environmentObject(journeyStore)
 } 

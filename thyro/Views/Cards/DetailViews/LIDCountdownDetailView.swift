@@ -5,10 +5,12 @@ struct LIDCountdownDetailView: View {
     @State private var selectedDate: Date = Date() // For the DatePicker
     @State private var showingDatePicker: Bool = false
 
+    // This computed property correctly handles config being nil
     private var raiDate: Date? {
-        configStore.config.nextImportantDate
+        configStore.config?.nextImportantDate
     }
 
+    // This computed property correctly uses raiDate (which handles nil config)
     private var daysUntilRAI: Int? {
         guard let date = raiDate, date > Date() else { return nil }
         let calendar = Calendar.current
@@ -24,7 +26,7 @@ struct LIDCountdownDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 30) {
-                if let days = daysUntilRAI, let date = raiDate {
+                if let days = daysUntilRAI, let validRaiDate = raiDate { // Use validRaiDate for clarity
                     // MARK: - Set Up State
                     VStack(spacing: 10) {
                         Text("Your RAI Treatment is in")
@@ -41,22 +43,22 @@ struct LIDCountdownDetailView: View {
                             .foregroundColor(Color.purple.opacity(0.9))
                             .offset(y: -10) // Adjust position relative to the large number
                         
-                        Text("Scheduled for: \(date, formatter: dateFormatter)")
+                        Text("Scheduled for: \(validRaiDate, formatter: dateFormatter)")
                             .font(.headline)
                             .padding(.top, 10)
                     }
                     .padding(.vertical, 40)
 
                     Button("Change RAI Date") {
-                        selectedDate = raiDate ?? Date() // Initialize picker with current date or today
+                        selectedDate = validRaiDate // Use the non-optional date here
                         showingDatePicker = true
                     }
                     .buttonStyle(.bordered)
                     
                     Button("Clear RAI Date") {
-                        var updatedConfig = configStore.config
-                        updatedConfig.nextImportantDate = nil
-                        configStore.setConfig(updatedConfig)
+                        guard var currentConfig = configStore.config else { return }
+                        currentConfig.nextImportantDate = nil
+                        configStore.setConfig(currentConfig)
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
@@ -78,7 +80,14 @@ struct LIDCountdownDetailView: View {
                     .padding(.vertical, 40)
 
                     Button("Select RAI Date") {
-                        selectedDate = configStore.config.nextImportantDate ?? Calendar.current.date(byAdding: .day, value: 1, to: Date())! // Default to tomorrow
+                        // Ensure there's a config to potentially update, even if just to set a date for the first time
+                        guard configStore.config != nil else {
+                            print("Error: Cannot select RAI date, user config is not loaded.")
+                            // Optionally, you could attempt to create a default config if this state is reachable
+                            // and user is authenticated, but that should ideally happen earlier in the flow.
+                            return
+                        }
+                        selectedDate = configStore.config?.nextImportantDate ?? Calendar.current.date(byAdding: .day, value: 1, to: Date())! 
                         showingDatePicker = true
                     }
                     .buttonStyle(.borderedProminent)
@@ -112,9 +121,13 @@ struct LIDCountdownDetailView: View {
                     .buttonStyle(.bordered)
                     
                     Button("Save Date") {
-                        var updatedConfig = configStore.config
-                        updatedConfig.nextImportantDate = selectedDate
-                        configStore.setConfig(updatedConfig)
+                        guard var currentConfig = configStore.config else { 
+                            print("Error: Cannot save date, user config not loaded.")
+                            showingDatePicker = false
+                            return
+                        }
+                        currentConfig.nextImportantDate = selectedDate
+                        configStore.setConfig(currentConfig)
                         showingDatePicker = false
                     }
                     .buttonStyle(.borderedProminent)
@@ -129,13 +142,25 @@ struct LIDCountdownDetailView: View {
 
 #Preview {
     let configStore = ConfigStore.shared
-    // Example 1: Date set
-    // configStore.config = UserConfig(trackSymptoms: true, labReminders: true, nextImportantDate: Calendar.current.date(byAdding: .day, value: 10, to: Date())!, meds: [])
-    // Example 2: No date set
-    configStore.config = UserConfig(trackSymptoms: true, labReminders: true, nextImportantDate: nil, meds: [])
+    let previewUserID = UUID()
+
+    // Corrected UserConfig initialization
+    let sampleConfig = UserConfig(
+        user_id: previewUserID, 
+        logSymptoms: true, 
+        trackAppointments: true, 
+        manageMedications: true, 
+        nextImportantDate: nil, // or Calendar.current.date(byAdding: .day, value: 10, to: Date())! for date set example
+        meds: []
+    )
+    configStore.config = sampleConfig
     
+    let journeyStore = JourneyStore.shared
+    journeyStore.profile = JourneyProfile(user_id: previewUserID, condition: .cancer, stage: .raiPrep, onMedication: true, onLID: true)
+
     return NavigationView {
         LIDCountdownDetailView()
             .environmentObject(configStore)
+            .environmentObject(journeyStore)
     }
 } 

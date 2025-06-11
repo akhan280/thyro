@@ -1,21 +1,21 @@
 import Foundation
 
 // Rule Matrix:
-// Card                   Show when…
-// SymptomLog             config.trackSymptoms == true
+// SymptomLog             config.logSymptoms == true
 // MedicationReminder     profile.onMedication == true
 // LIDCountdown           profile.stage == .raiPrep
-// RAIPrecautions         profile.stage == .raiIsolation
-// TgTrend                profile.condition == .cancer && profile.stage == .surveillance  (Note: original rule was profile.stage >= .surveillance, interpreting as == .surveillance for simplicity, adjust if needed)
+// RAIPrecautions         profile.stage == .raiIsolation || profile.stage == .raiPrep
+// TgTrend                profile.condition == .cancer && profile.stage == .surveillance
 // HeartRateLog           profile.condition == .hyper
-// LabDueReminder         config.labReminders == true && profile.stage != .raiIsolation
-// FoodLookup             profile.stage == .raiPrep || profile.stage == .raiIsolation
+// FoodLookup             REMOVED (Now a tab)
+// LabDueReminder         REMOVED
+// Appointments           config.trackAppointments == true
 
 func enabledCards(for profile: JourneyProfile, config: UserConfig) -> [CardType] {
     return CardType.allCases.filter { cardType in
         switch cardType {
         case .symptomLog:
-            return config.trackSymptoms
+            return config.logSymptoms
         case .medicationReminder:
             return profile.onMedication
         case .lidCountdown:
@@ -23,15 +23,15 @@ func enabledCards(for profile: JourneyProfile, config: UserConfig) -> [CardType]
         case .raiPrecautions:
             return profile.stage == .raiIsolation || profile.stage == .raiPrep
         case .tgTrend:
-            // Assuming .surveillance is the stage where TgTrend is relevant.
-            // If other later stages also need it, the logic for Stage comparison might need adjustment.
             return profile.condition == .cancer && profile.stage == .surveillance
         case .heartRateLog:
             return profile.condition == .hyper
-        case .labDueReminder:
-            return config.labReminders && profile.stage != .raiIsolation
-        case .foodLookup:
-            return profile.stage == .raiPrep || profile.stage == .raiIsolation
+        // case .foodLookup: // Removed
+        //     return profile.stage == .raiPrep || profile.stage == .raiIsolation
+        // case .labDueReminder: // Removed
+        case .appointments:
+            return config.trackAppointments
+        // default: return false // Not needed if all current cases are handled
         }
     }
 } 

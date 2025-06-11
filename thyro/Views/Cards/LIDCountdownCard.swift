@@ -4,7 +4,7 @@ struct LIDCountdownCard: View {
     @EnvironmentObject var configStore: ConfigStore
 
     private var daysUntilRAI: Int? {
-        guard let raiDate = configStore.config.nextImportantDate else {
+        guard let currentConfig = configStore.config, let raiDate = currentConfig.nextImportantDate else {
             return nil
         }
         // Ensure the date is in the future
@@ -53,14 +53,27 @@ struct LIDCountdownCard: View {
 }
 
 #Preview {
-    // Create a sample ConfigStore for preview
     let configStore = ConfigStore.shared
-    // Example 1: Date set in the future
-    // configStore.config = UserConfig(trackSymptoms: true, labReminders: true, nextImportantDate: Calendar.current.date(byAdding: .day, value: 10, to: Date())!, meds: [])
-    // Example 2: No date set (or date in past)
-    configStore.config = UserConfig(trackSymptoms: true, labReminders: true, nextImportantDate: nil, meds: [])
+    let previewUserID = UUID()
+    
+    // Corrected UserConfig initialization
+    let sampleConfig = UserConfig(
+        user_id: previewUserID, 
+        logSymptoms: true, 
+        trackAppointments: true, 
+        manageMedications: true, 
+        nextImportantDate: nil, // or Calendar.current.date(byAdding: .day, value: 10, to: Date())! for future date
+        meds: []
+    )
+    configStore.config = sampleConfig
+
+    let journeyStore = JourneyStore.shared
+    // Ensure JourneyProfile initializer is also up-to-date if it changed (it uses user_id correctly)
+    journeyStore.profile = JourneyProfile(user_id: previewUserID, condition: .cancer, stage: .raiPrep, onMedication: true, onLID: true)
 
     return LIDCountdownCard()
         .environmentObject(configStore)
+        .environmentObject(journeyStore)
         .padding()
+        .frame(width: 300)
 } 

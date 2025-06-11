@@ -16,6 +16,10 @@ struct OnboardingCoordinator: View {
     @State private var onMedication: Bool = false // Default to false, user will select
     @State private var trackSymptoms: Bool = true // Default to true, user can change
     @State private var labReminders: Bool = true  // Default to true, user can change
+    // New feature toggles - default to true for a good initial experience
+    @State private var logSymptoms: Bool = true
+    @State private var trackAppointments: Bool = true
+    @State private var manageMedications: Bool = true
     // These are no longer set by the new PersonalizationView design, will use defaults from UserConfig or be set elsewhere
     // @State private var nextImportantDate: Date? = nil 
     // @State private var medications: [Medication] = []
@@ -62,10 +66,14 @@ struct OnboardingCoordinator: View {
                 if let condition = selectedCondition, let stage = selectedStage {
                     PersonalizationView(
                         onMedication: $onMedication,
-                        trackSymptoms: $trackSymptoms,
-                        labReminders: $labReminders,
+                        logSymptoms: $logSymptoms,
+                        trackAppointments: $trackAppointments,
+                        manageMedications: $manageMedications,
                         onFinish: {
-                            completeOnboarding(condition: condition, stage: stage)
+                            // Task to get user_id and complete onboarding
+                            Task {
+                                await completeOnboarding(condition: condition, stage: stage)
+                            }
                         },
                         onBack: { 
                             currentStep = .stage 
@@ -80,23 +88,34 @@ struct OnboardingCoordinator: View {
         }
     }
     
-    private func completeOnboarding(condition: Condition, stage: Stage) {
+    private func completeOnboarding(condition: Condition, stage: Stage) async {
+        guard let currentUserID = try? await SupabaseService.shared.client.auth.session.user.id else {
+            print("OnboardingCoordinator: Error - Could not get current user ID to complete onboarding.")
+            // Handle error appropriately - maybe show an alert to the user or retry.
+            return
+        }
+        
         let isOnLID = (stage == .raiPrep) // Determine onLID status based on the stage
+        let actualManageMedications = onMedication && manageMedications // Only enable if on meds AND user wants it
 
-        let newProfile = JourneyProfile(condition: condition, 
+        let newProfile = JourneyProfile(user_id: currentUserID, // Use fetched user_id
+                                        condition: condition, 
                                         stage: stage, 
                                         onMedication: onMedication, 
                                         onLID: isOnLID) // Use the determined onLID status
         
-        let newConfig = UserConfig(trackSymptoms: trackSymptoms, 
-                                   labReminders: labReminders, 
+        let newConfig = UserConfig(user_id: currentUserID, // Use fetched user_id
+                                   logSymptoms: logSymptoms, 
+                                   trackAppointments: trackAppointments,
+                                   manageMedications: actualManageMedications,
                                    nextImportantDate: nil, 
                                    meds: [])
         
+        // These will trigger sinks that call SupabaseService push methods
         JourneyStore.shared.setProfile(newProfile)
         ConfigStore.shared.setConfig(newConfig)
         
-        print("Onboarding complete. Profile: \(newProfile), Config: \(newConfig)")
+        print("Onboarding complete. UserID: \(currentUserID) Profile: \(newProfile), Config: \(newConfig)")
         onFinishOnboarding()
     }
 }

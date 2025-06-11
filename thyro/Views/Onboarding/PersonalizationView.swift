@@ -1,75 +1,24 @@
 import SwiftUI
 
-// Minimal Medication Editor (Placeholder - expand as needed)
-struct MinimalMedicationEditorView: View {
-    @Binding var meds: [Medication]
-    @State private var showAddMedSheet = false
-    @State private var newMedName: String = ""
-    @State private var newMedDose: String = ""
-    @State private var newMedUnit: String = "mcg"
-    
-    let units = ["mcg", "mg", "g", "mL"]
-
-    var body: some View {
-        Section(header: Text("Medications")) {
-            ForEach(meds) { med in
-                HStack {
-                    Text(med.name)
-                    Spacer()
-                    Text("\(med.doseMg, specifier: "%.2f") \(med.unit)")
-                }
-            }
-            .onDelete(perform: deleteMed)
-            
-            Button("Add Medication") {
-                showAddMedSheet = true
-            }
-        }
-        .sheet(isPresented: $showAddMedSheet) {
-            NavigationView {
-                Form {
-                    TextField("Medication Name (e.g., Levothyroxine)", text: $newMedName)
-                    TextField("Dose (e.g., 100)", text: $newMedDose).keyboardType(.decimalPad)
-                    Picker("Unit", selection: $newMedUnit) {
-                        ForEach(units, id: \.self) { Text($0) }
-                    }
-                    Button("Add") {
-                        if let dose = Double(newMedDose), !newMedName.isEmpty {
-                            meds.append(Medication(name: newMedName, doseMg: dose, unit: newMedUnit))
-                            newMedName = ""
-                            newMedDose = ""
-                            showAddMedSheet = false
-                        }
-                    }
-                }
-                .navigationTitle("Add Medication")
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showAddMedSheet = false } }
-                }
-            }
-        }
-    }
-    
-    private func deleteMed(at offsets: IndexSet) {
-        meds.remove(atOffsets: offsets)
-    }
-}
+// MinimalMedicationEditorView is removed as full medication management will be a separate tab/feature.
 
 struct PersonalizationView: View {
-    @Binding var onMedication: Bool
-    @Binding var trackSymptoms: Bool
-    @Binding var labReminders: Bool
+    @Binding var onMedication: Bool // Still needed to conditionally show manageMedications toggle
+    @Binding var logSymptoms: Bool
+    @Binding var trackAppointments: Bool
+    @Binding var manageMedications: Bool
     
     var onFinish: () -> Void
     var onBack: () -> Void
 
     private let backgroundColor = Color(red: 248/255, green: 248/255, blue: 247/255)
+    private let textColor = Color.black.opacity(0.8)
+    private let questionTextColor = Color.black.opacity(0.7)
+    // Button colors can be reused from ConditionPickerView if a shared style is created, or defined here.
     private let buttonBackgroundColor = Color.white
     private let selectedButtonBackgroundColor = Color.purple.opacity(0.1)
     private let selectedBorderColor = Color.purple
     private let unselectedBorderColor = Color.gray.opacity(0.2)
-    private let textColor = Color.black.opacity(0.8)
-    private let questionTextColor = Color.black.opacity(0.7)
 
     var body: some View {
         ZStack {
@@ -84,65 +33,80 @@ struct PersonalizationView: View {
                             .foregroundColor(textColor)
                     }
                     .padding(.leading, 20)
-
                     Spacer()
-                    
                     HStack(spacing: 12) {
                         OnboardingStepIcon(systemName: "heart.text.square", isSelected: false)
                         OnboardingStepIcon(systemName: "clock", isSelected: false)
-                        OnboardingStepIcon(systemName: "pills", isSelected: true) // Third icon selected
+                        OnboardingStepIcon(systemName: "person.fill.checkmark", isSelected: true) // Updated icon for personalization
                     }
-                    
                     Spacer()
                     Image(systemName: "chevron.left").opacity(0).padding(.trailing, 20)
                 }
                 .padding(.top, 20)
                 .padding(.bottom, 30)
 
-                Text("Let's tune your experience")
+                Text("Personalize Your Setup")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(textColor)
                     .padding(.bottom, 40)
 
-                // Questions
-                VStack(alignment: .leading, spacing: 30) {
-                    PersonalizationQuestionView(
-                        question: "Are you currently taking any thyroid-related medications?",
-                        selection: $onMedication,
-                        textColor: questionTextColor,
-                        buttonBackgroundColor: buttonBackgroundColor,
-                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
-                        selectedBorderColor: selectedBorderColor,
-                        unselectedBorderColor: unselectedBorderColor
-                    )
-                    
-                    PersonalizationQuestionView(
-                        question: "Do you want to track your daily symptoms?",
-                        selection: $trackSymptoms,
-                        textColor: questionTextColor,
-                        buttonBackgroundColor: buttonBackgroundColor,
-                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
-                        selectedBorderColor: selectedBorderColor,
-                        unselectedBorderColor: unselectedBorderColor
-                    )
-                    
-                    PersonalizationQuestionView(
-                        question: "Would you like reminders for lab tests or doctor visits?",
-                        selection: $labReminders,
-                        textColor: questionTextColor,
-                        buttonBackgroundColor: buttonBackgroundColor,
-                        selectedButtonBackgroundColor: selectedButtonBackgroundColor,
-                        selectedBorderColor: selectedBorderColor,
-                        unselectedBorderColor: unselectedBorderColor
-                    )
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 35) {
+                        PersonalizationToggleQuestionView(
+                            question: "Are you currently taking any thyroid-related medications?",
+                            selection: $onMedication,
+                            textColor: questionTextColor,
+                            buttonBackgroundColor: buttonBackgroundColor,
+                            selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                            selectedBorderColor: selectedBorderColor,
+                            unselectedBorderColor: unselectedBorderColor
+                        )
+                        
+                        PersonalizationToggleQuestionView(
+                            question: "Enable symptom logging to track how you feel daily?",
+                            selection: $logSymptoms,
+                            textColor: questionTextColor,
+                            buttonBackgroundColor: buttonBackgroundColor,
+                            selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                            selectedBorderColor: selectedBorderColor,
+                            unselectedBorderColor: unselectedBorderColor
+                        )
+                        
+                        PersonalizationToggleQuestionView(
+                            question: "Enable appointment tracking?",
+                            selection: $trackAppointments,
+                            textColor: questionTextColor,
+                            buttonBackgroundColor: buttonBackgroundColor,
+                            selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                            selectedBorderColor: selectedBorderColor,
+                            unselectedBorderColor: unselectedBorderColor
+                        )
+                        
+                        // Conditionally show the manageMedications toggle if they are on medication
+                        if onMedication {
+                            PersonalizationToggleQuestionView(
+                                question: "Enable medication list management & reminders?",
+                                selection: $manageMedications,
+                                textColor: questionTextColor,
+                                buttonBackgroundColor: buttonBackgroundColor,
+                                selectedButtonBackgroundColor: selectedButtonBackgroundColor,
+                                selectedBorderColor: selectedBorderColor,
+                                unselectedBorderColor: unselectedBorderColor
+                            )
+                        } else {
+                            // Ensure manageMedications is false if not on medication
+                            // This is also handled in OnboardingCoordinator, but good for UI consistency.
+                            // Text("Medication management will be available if you indicate you are on medication.")
+                            //     .font(.caption).foregroundColor(.gray).padding(.leading)
+                        }
+                    }
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
 
-                Spacer()
+                Spacer() // Pushes button to bottom
                 
-                // Finish Button (replaces "Next")
                 Button(action: onFinish) {
-                    Text("Next") // Image shows "Next", but this is the finish step
+                    Text("Finish Setup")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
@@ -156,7 +120,6 @@ struct PersonalizationView: View {
                             )
                         )
                         .cornerRadius(25)
-                        // No disabled state for this button in the design, it's always active
                 }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 10)
@@ -168,10 +131,17 @@ struct PersonalizationView: View {
             }
         }
         .navigationBarHidden(true)
+        .onChange(of: onMedication) { newValue in
+            // If user is not on medication, disable medication management feature
+            if !newValue {
+                manageMedications = false
+            }
+        }
     }
 }
 
-struct PersonalizationQuestionView: View {
+// Reusing YesNoButton style for these toggles, renamed for clarity
+struct PersonalizationToggleQuestionView: View {
     let question: String
     @Binding var selection: Bool
     
@@ -188,10 +158,10 @@ struct PersonalizationQuestionView: View {
                 .foregroundColor(textColor)
             
             HStack(spacing: 15) {
-                YesNoButton(title: "Yes", isSelected: selection == true, action: { selection = true },
+                ToggleButton(title: "Yes", isSelected: selection == true, action: { selection = true },
                             backgroundColor: buttonBackgroundColor, selectedBackgroundColor: selectedButtonBackgroundColor,
                             selectedBorderColor: selectedBorderColor, unselectedBorderColor: unselectedBorderColor, textColor: textColor)
-                YesNoButton(title: "No", isSelected: selection == false, action: { selection = false },
+                ToggleButton(title: "No", isSelected: selection == false, action: { selection = false },
                             backgroundColor: buttonBackgroundColor, selectedBackgroundColor: selectedButtonBackgroundColor,
                             selectedBorderColor: selectedBorderColor, unselectedBorderColor: unselectedBorderColor, textColor: textColor)
             }
@@ -199,7 +169,7 @@ struct PersonalizationQuestionView: View {
     }
 }
 
-struct YesNoButton: View {
+struct ToggleButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -230,15 +200,17 @@ struct YesNoButton: View {
 
 #Preview {
     struct PreviewWrapper: View {
-        @State var onMed: Bool = false
-        @State var trackSym: Bool = true
-        @State var labRem: Bool = true
+        @State var onMed: Bool = true
+        @State var logSym: Bool = true
+        @State var trackApp: Bool = true
+        @State var manageMeds: Bool = true
         
         var body: some View {
             PersonalizationView(
                 onMedication: $onMed,
-                trackSymptoms: $trackSym,
-                labReminders: $labRem,
+                logSymptoms: $logSym,
+                trackAppointments: $trackApp,
+                manageMedications: $manageMeds,
                 onFinish: { print("Finish Tapped") },
                 onBack: { print("Back Tapped from Personalization") }
             )
